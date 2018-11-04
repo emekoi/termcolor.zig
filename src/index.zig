@@ -80,10 +80,10 @@ pub const ColoredOutStream = struct.{
         InvalidMode,
     };
 
-    default_attrs: windows.WORD,
-    current_attrs: windows.WORD,
-    back_attr: []const u8,
-    fore_attr: []const u8,
+    default_attrs: u16,
+    current_attrs: u16,
+    background: u16,
+    foreground: u16,
 
     file: os.File,
     file_stream: OutStream,
@@ -100,8 +100,8 @@ pub const ColoredOutStream = struct.{
             .out_stream = null,
             .default_attrs = info.wAttributes,
             .current_attrs = info.wAttributes,
-            .back_attr = "",
-            .fore_attr = "",
+            .background = info.wAttributes & 0xff00,
+            .foreground = info.wAttributes & 0x00ff,
         };
     }
 
@@ -120,20 +120,22 @@ pub const ColoredOutStream = struct.{
             return error.InvalidMode;
         }
 
-        self.current_attrs |= switch (attr) {
-                Attribute.Reversed   => COMMON_LVB_REVERSE_VIDEO,
-                Attribute.Underlined => COMMON_LVB_UNDERSCORE,
+        self.current_attrs = switch (attr) {
                 Attribute.Bright     => switch (mode.?) {
                     Mode.ForeGround => FOREGROUND_INTENSITY,
                     Mode.BackGround => BACKGROUND_INTENSITY,
                 },
+                else => self.current_attrs
+                // these dont work without [this](https://docs.microsoft.com/en-us/windows/console/console-screen-buffers)
+                // Attribute.Reversed   => COMMON_LVB_REVERSE_VIDEO,
+                // Attribute.Underlined => COMMON_LVB_UNDERSCORE,
             };
 
         // TODO handle errors
-        _ = windows.SetConsoleTextAttribute(self.file.handle, self.current_attrs);
+        _ = windows.SetConsoleTextAttribute(self.file.handle, self.current_attrs | self.foreground | self.background);
     }
 
-    fn setAttribute(self: *Self, attr: Attribute, mode: ?Mode) !void {
+    pub fn setAttribute(self: *Self, attr: Attribute, mode: ?Mode) !void {
         if (builtin.os == builtin.Os.windows and !supportsAnsi(self.file.handle)) {
             try self.setAttributeWindows(attr, mode);
         } else {
@@ -150,31 +152,35 @@ pub const ColoredOutStream = struct.{
     }
 
     fn setColorWindows(self: *Self, color: Color, mode: Mode) void {
-        self.current_attrs |= switch (mode) {
-            Mode.ForeGround => switch (color) {
-                Color.Black  => FOREGROUND_BLACK,
-                Color.Blue   => FOREGROUND_BLUE,
-                Color.Green  => FOREGROUND_GREEN,
-                Color.Aqua   => FOREGROUND_AQUA,
-                Color.Red    => FOREGROUND_RED,
-                Color.Purple => FOREGROUND_PURPLE,
-                Color.Yellow => FOREGROUND_YELLOW,
-                Color.White  => FOREGROUND_WHITE,
+        switch (mode) {
+            Mode.ForeGround => {
+                self.foreground = switch (color) {
+                    Color.Black  => FOREGROUND_BLACK,
+                    Color.Blue   => FOREGROUND_BLUE,
+                    Color.Green  => FOREGROUND_GREEN,
+                    Color.Aqua   => FOREGROUND_AQUA,
+                    Color.Red    => FOREGROUND_RED,
+                    Color.Purple => FOREGROUND_PURPLE,
+                    Color.Yellow => FOREGROUND_YELLOW,
+                    Color.White  => FOREGROUND_WHITE,
+                };
             },
-            Mode.BackGround => switch (color) {
-                Color.Black  => BACKGROUND_BLACK,
-                Color.Blue   => BACKGROUND_BLUE,
-                Color.Green  => BACKGROUND_GREEN,
-                Color.Aqua   => BACKGROUND_AQUA,
-                Color.Red    => BACKGROUND_RED,
-                Color.Purple => BACKGROUND_PURPLE,
-                Color.Yellow => BACKGROUND_YELLOW,
-                Color.White  => BACKGROUND_WHITE,
-            }
-        };
+            Mode.BackGround => {
+                self.background = switch (color) {
+                    Color.Black  => BACKGROUND_BLACK,
+                    Color.Blue   => BACKGROUND_BLUE,
+                    Color.Green  => BACKGROUND_GREEN,
+                    Color.Aqua   => BACKGROUND_AQUA,
+                    Color.Red    => BACKGROUND_RED,
+                    Color.Purple => BACKGROUND_PURPLE,
+                    Color.Yellow => BACKGROUND_YELLOW,
+                    Color.White  => BACKGROUND_WHITE,
+                };
+            },
+        }
 
         // TODO handle errors
-        _ = windows.SetConsoleTextAttribute(self.file.handle, self.current_attrs);
+        _ = windows.SetConsoleTextAttribute(self.file.handle, self.current_attrs | self.foreground | self.background);
     }
 
     pub fn setColor(self: *Self, color: Color, mode: Mode, attributes: ?[]const Attribute) !void {

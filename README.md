@@ -6,5 +6,8 @@ a cross-platform library for outputing colored text, written in [zig](https://zi
   - underline, bright, and reverse attributes
 
 ## supports
-  - window's console
+  - window's console (cmd.exe)
   - any terminal supporting ansi escape codes
+
+## caveats and limitations
+  - currently underline and reverse don't worn on windows consoles.
