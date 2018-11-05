@@ -2,7 +2,7 @@
 a cross-platform library for outputing colored text, written in [zig](https://ziglang.org/).
 
 ## features
-  - 7 different colors
+  - 8 different colors
   - underline, bright, and reverse attributes
 
 ## supports
