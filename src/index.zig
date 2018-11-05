@@ -33,8 +33,8 @@ const BACKGROUND_YELLOW = FOREGROUND_YELLOW << 4;
 const BACKGROUND_WHITE = FOREGROUND_WHITE << 4;
 const BACKGROUND_INTENSITY = FOREGROUND_INTENSITY << 4;
 
-const COMMON_LVB_REVERSE_VIDEO = 0x4000;
-const COMMON_LVB_UNDERSCORE = 0x8000;
+// const COMMON_LVB_REVERSE_VIDEO = 0x4000;
+// const COMMON_LVB_UNDERSCORE = 0x8000;
 
 const OutStream = os.File.OutStream;
 
@@ -99,7 +99,7 @@ pub const ColoredOutStream = struct.{
             .file_stream = file.outStream(),
             .out_stream = null,
             .default_attrs = info.wAttributes,
-            .current_attrs = info.wAttributes,
+            .current_attrs = 0,
             .background = info.wAttributes & 0xff00,
             .foreground = info.wAttributes & 0x00ff,
         };
@@ -120,16 +120,16 @@ pub const ColoredOutStream = struct.{
             return error.InvalidMode;
         }
 
-        self.current_attrs = switch (attr) {
-                Attribute.Bright     => switch (mode.?) {
-                    Mode.ForeGround => FOREGROUND_INTENSITY,
-                    Mode.BackGround => BACKGROUND_INTENSITY,
-                },
-                else => self.current_attrs
-                // these dont work without [this](https://docs.microsoft.com/en-us/windows/console/console-screen-buffers)
-                // Attribute.Reversed   => COMMON_LVB_REVERSE_VIDEO,
-                // Attribute.Underlined => COMMON_LVB_UNDERSCORE,
-            };
+        self.current_attrs ^= switch (attr) {
+            Attribute.Bright     => switch (mode.?) {
+                Mode.ForeGround => FOREGROUND_INTENSITY,
+                Mode.BackGround => BACKGROUND_INTENSITY,
+            },
+            // these dont work without [this](https://docs.microsoft.com/en-us/windows/console/console-screen-buffers)
+            // Attribute.Reversed   => COMMON_LVB_REVERSE_VIDEO,
+            // Attribute.Underlined => COMMON_LVB_UNDERSCORE,
+            else => 0,
+        };
 
         // TODO handle errors
         _ = windows.SetConsoleTextAttribute(self.file.handle, self.current_attrs | self.foreground | self.background);
