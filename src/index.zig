@@ -106,7 +106,7 @@ pub const ColoredOutStream = struct.{
     }
 
     // can't be done in `new` because of no copy-elision
-    fn outStream(self: *Self) *OutStream.Stream {
+    pub fn outStream(self: *Self) *OutStream.Stream {
         if (self.out_stream) |out_stream| {
             return out_stream;
         } else {
