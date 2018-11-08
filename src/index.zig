@@ -60,19 +60,6 @@ pub const Mode = enum.{
     BackGround,
 };
 
-pub fn supportsAnsi(handle: os.FileHandle) bool {
-    if (builtin.os == builtin.Os.windows) {
-        var out: windows.DWORD = undefined;
-        return windows.GetConsoleMode(handle, &out) == 0;
-    } else {
-        if (builtin.link_libc) {
-            return std.c.isatty(handle) != 0;
-        } else {
-            return posix.isatty(handle);
-        }
-    }
-}
-
 pub const ColoredOutStream = struct.{
     const Self = @This();
 
@@ -136,7 +123,7 @@ pub const ColoredOutStream = struct.{
     }
 
     pub fn setAttribute(self: *Self, attr: Attribute, mode: ?Mode) !void {
-        if (builtin.os == builtin.Os.windows and !supportsAnsi(self.file.handle)) {
+        if (builtin.os == builtin.Os.windows and !os.supportsAnsiEscapeCodes(self.file.handle)) {
             try self.setAttributeWindows(attr, mode);
         } else {
             var out = self.outStream();
@@ -190,7 +177,7 @@ pub const ColoredOutStream = struct.{
             }
         }
 
-        if (builtin.os == builtin.Os.windows and !supportsAnsi(self.file.handle)) {
+        if (builtin.os == builtin.Os.windows and !os.supportsAnsiEscapeCodes(self.file.handle)) {
             self.setColorWindows(color, mode);
         } else {
             var out = self.outStream();
@@ -220,7 +207,7 @@ pub const ColoredOutStream = struct.{
     }
 
     pub fn reset(self: *Self) !void {
-        if (builtin.os == builtin.Os.windows and !supportsAnsi(self.file.handle)) {
+        if (builtin.os == builtin.Os.windows and !os.supportsAnsiEscapeCodes(self.file.handle)) {
             // TODO handle errors
             _ = windows.SetConsoleTextAttribute(self.file.handle, self.default_attrs);
         } else {
